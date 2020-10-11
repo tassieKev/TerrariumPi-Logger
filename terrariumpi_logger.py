@@ -14,15 +14,11 @@ dbname = "terrariumPi_db"
 #Define the TerrariumPi URL
 base_url = "http://localhost:8090"
 
-
-# Create the InfluxDB object
-client = InfluxDBClient(host=my_host, port=my_port, database=dbname)
-
-#print(client.get_list_database()) #debugging test of connection
-
-
-#calculate the time.
+#calculate the current time.
 current_time = int(time.time())
+
+# initialise array
+json_body = []
 
 # Read the sensor data
 data_from_API = urllib.request.urlopen(base_url+"/api/sensors").read()
@@ -30,9 +26,9 @@ data_from_API = urllib.request.urlopen(base_url+"/api/sensors").read()
 #Convert it to a Python object 
 json_data = json.loads(data_from_API)
 
-#For each sensor convert the relevant data into InfluxDB Line Protocol format
+#For each sensor convert the relevant data into InfluxDB Line Protocol format and append to a python dictionary
 for element in json_data['sensors']:
-	json_body = [
+	json_body.append(
 		{
 			"measurement": element['name'],
 			"tags": {
@@ -47,11 +43,7 @@ for element in json_data['sensors']:
 				"Alarm_Min": element['alarm_min']
 			}
 		}
-	]
-# and write to InfluxDB database
-	client.write_points(json_body, time_precision='s', protocol='json')
-#	print ( json_body )
-
+	)
 
 # Read the switch data
 data_from_API = urllib.request.urlopen(base_url+"/api/switches").read()
@@ -59,9 +51,9 @@ data_from_API = urllib.request.urlopen(base_url+"/api/switches").read()
 #Convert it to a Python object
 json_data = json.loads(data_from_API)
 
-# For each switch convert the relevant data into InfluxDB Line Protocol format
+# For each switch convert the relevant data into InfluxDB Line Protocol format and append to python dictionary
 for element in json_data['switches']:
-	json_body = [
+	json_body.append(
 		{
 			"measurement": element['name'],
 			"tags": {
@@ -76,15 +68,14 @@ for element in json_data['switches']:
 				"Timer_Stop": element['timer_stop']
 			}
 		}
-	]
-	client.write_points(json_body, time_precision='s', protocol='json')
-#	print ( json_body )
+	)
+
 
 # Read the sensor averages
 data_from_API = urllib.request.urlopen(base_url+"/api/sensors/average").read()
 json_data = json.loads(data_from_API)
 for i in json_data["sensors"].keys():
-	json_body = [
+	json_body.append(
 		{
 			"measurement": i,
 			"time": current_time,
@@ -95,14 +86,13 @@ for i in json_data["sensors"].keys():
 				"Alarm_Min": json_data['sensors'][i]['alarm_min']
 			}
 		}
-	]
-	client.write_points(json_body, time_precision='s', protocol='json')
-#	print ( json_body )
+	)
+
 
 # Read the system data
 data_from_API = urllib.request.urlopen(base_url+"/api/system").read()
 json_data = json.loads(data_from_API)
-json_body = [
+json_body.append(
 	{
 		"measurement": "Disk",
 		"time": current_time,
@@ -112,11 +102,9 @@ json_body = [
 			"Used Disk": json_data['disk']['used']
 		}
 	}
-]
-client.write_points(json_body, time_precision='s', protocol='json')
-#print ( json_body )
+)
 
-json_body = [
+json_body.append(
 	{
 		"measurement": "Memory",
 		"time": current_time,
@@ -126,11 +114,9 @@ json_body = [
 			"Used Memory": json_data['memory']['used']
 		}
 	}
-]
-client.write_points(json_body, time_precision='s', protocol='json')
-#print ( json_body )
+)
 
-json_body = [
+json_body.append(
 	{
 		"measurement": "CPU Load",
 		"time": current_time,
@@ -140,11 +126,10 @@ json_body = [
 			"Load5": json_data['load']['load5']
 		}
 	}
-]
-client.write_points(json_body, time_precision='s', protocol='json')
-#print ( json_body )
+)
 
-json_body = [
+
+json_body.append(
 	{
 		"measurement": "CPU Temperature",
 		"time": current_time,
@@ -152,11 +137,10 @@ json_body = [
 			"CPU temperature": json_data['temperature']
 		}
 	}
-]
-client.write_points(json_body, time_precision='s', protocol='json')
-#print ( json_body )
+)
 
-json_body = [
+
+json_body.append(
 	{
 		"measurement": "Uptime",
 		"time": current_time,
@@ -164,6 +148,11 @@ json_body = [
 			"System Uptime": json_data['uptime']
 		}
 	}
-]
+)
+
+
+# Create the InfluxDB object
+client = InfluxDBClient(host=my_host, port=my_port, database=dbname)
+
+# write the data to the InfluxDB database
 client.write_points(json_body, time_precision='s', protocol='json')
-#print ( json_body )
